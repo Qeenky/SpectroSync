@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from core.models import MediaAsset, VideoConfig
+from src.core.models import MediaAsset, VideoConfig
 
 
 class IMediaRepository(ABC):

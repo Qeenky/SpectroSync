@@ -1,6 +1,6 @@
 from typing import Optional
-from core.models import MediaAsset
-from core.interfaces import IMediaRepository
+from src.core.models import MediaAsset
+from src.core.interfaces import IMediaRepository
 import os
 
 
