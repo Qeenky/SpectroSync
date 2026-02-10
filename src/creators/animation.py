@@ -5,6 +5,7 @@ from matplotlib.animation import FFMpegWriter
 import numpy as np
 import subprocess, os
 
+
 class Animator:
     def __init__(self):
         self.frames = range(0)
@@ -37,6 +38,21 @@ class WaveVisualizer:
         self.analyzer = Analizator
         self.precompute_bands()
 
+        # Параметры автономной динамической волны
+        self.base_phase = 0.0  # Базовая фаза, которая постоянно увеличивается
+        self.base_phase_speed = 10.0  # Скорость движения волны
+        self.time = 0.0  # Внутреннее время для автономных эффектов
+
+        # Автономные осцилляторы для плавного движения
+        self.autonomous_amplitude = 1.0
+        self.autonomous_frequency = 1.0
+        self.autonomous_phase_mod = 0.0
+
+        # Для плавного изменения частоты
+        self.current_frequency = 1.0
+        self.target_frequency = 1.0
+        self.frequency_smoothness = 0.03  # Плавность изменения частоты
+
     def precompute_bands(self):
         spec = self.analyzer.spectrogram
 
@@ -59,64 +75,125 @@ class WaveVisualizer:
             'highs': self.highs_norm[frame_idx]
         }
 
+    def update_autonomous_motion(self, dt, powers):
+        """Обновляет автономное движение волны"""
+        self.time += dt
+        self.base_phase += self.base_phase_speed * dt
+        self.autonomous_amplitude = 1.0 + 0.3 * np.sin(self.time * 0.3)
+        self.autonomous_phase_mod = 0.5 * np.sin(self.time * 0.08)
+        self.target_frequency = 1.0 + powers['mids'] * 2.0
+        self.current_frequency += (self.target_frequency - self.current_frequency) * self.frequency_smoothness
+        self.current_frequency += 0.1 * np.sin(self.time * 0.15)
+
     def generate_wave(self, time_sec, length=1000):
         powers = self.get_powers_at_time(time_sec)
 
+        # TODO: Сделать параметром
+        dt = 1 / 60.0  # предполагаем 60 FPS
+        self.update_autonomous_motion(dt, powers)
+
         x = np.linspace(0, 4 * np.pi, length)
 
-        amplitude = 1.0 + powers['lows'] * 3  # Амплитуда: 1..4
-        frequency = 1.0 + powers['mids'] * 2  # Частота: 1..3
+        amplitude_mod = 1.0 + powers['lows'] * 3.0  # Сильное влияние на высоту
 
-        base_wave = amplitude * np.sin(frequency * x)
+        final_amplitude = self.autonomous_amplitude * amplitude_mod
+        final_frequency = max(0.5, min(3.0, self.current_frequency))  # Ограничиваем частоту
 
-        harmonic_amp = powers['mids'] * 0.5
-        harmonic = harmonic_amp * np.sin(2 * frequency * x + time_sec * 2)
+        phase = self.base_phase + self.autonomous_phase_mod + time_sec * 0.5
 
-        detail_amp = powers['highs'] * 0.3
-        detail = detail_amp * np.random.randn(length) * np.sin(8 * x)
+        base_wave = final_amplitude * np.sin(final_frequency * x + phase)
+
+        harmonic_amp = powers['mids'] * 0.6  # Увеличил для большего эффекта
+        harmonic_phase = phase * 1.5 + np.sin(self.time * 0.3)
+        harmonic = harmonic_amp * np.sin(2 * final_frequency * x + harmonic_phase)
+
+        detail_amp = powers['highs'] * 0.4  # Увеличил для большего эффекта
+
+        noise_freq = 8 + powers['highs'] * 6  # Частота шума зависит от highs
+        detail = detail_amp * np.sin(noise_freq * x + self.time * 3) * 0.7
+
+        smooth_noise = np.convolve(np.random.randn(length), np.ones(3) / 3, mode='same') # Добавляем немного сглаженного случайного шума
+        detail += detail_amp * smooth_noise * 0.2
 
         wave = base_wave + harmonic + detail
 
-        envelope = np.exp(-(x - 2 * np.pi) ** 2 / (2 * np.pi) ** 2)
+        # Динамическая огибающая
+        envelope_width = 2.0 + powers['lows'] * 1.5  # Bass влияет на ширину
+        envelope = np.exp(-(x - 2 * np.pi) ** 2 / (envelope_width * np.pi) ** 2)
         wave = wave * envelope
 
+        # Автономное "дыхание" волны
+        breath_intensity = 0.15 + powers['mids'] * 0.1  # Mids усиливают дыхание
+        breath = breath_intensity * np.sin(self.time * 0.4) * np.sin(x * 0.5)
+        wave += breath
+
+        # Добавляем "пульсацию" от bass
+        pulse = powers['lows'] * 0.3 * np.sin(x * 0.8 + self.time * 1.0)
+        wave += pulse
+
         return x, wave, powers
+
+    def clamp_color_value(self, value):
+        """Ограничивает значение цвета между 0 и 1"""
+        return max(0.0, min(1.0, float(value)))
 
     def get_wave_color(self, powers):
         l, m, h = powers['lows'], powers['mids'], powers['highs']
 
-        if l > 0.7:
-            r = 0.8 + l * 0.2
-            g = 0.3 + m * 0.4
-            b = 0.1 + h * 0.2
-            return (r, g, b, 0.9)
-        elif m > 0.6:
-            r = 0.4 + h * 0.3
-            g = 0.3 + m * 0.3
-            b = 0.7 + l * 0.2
-            return (r, g, b, 0.8)
-        else:
-            r = 0.2 + h * 0.3
-            g = 0.6 + m * 0.3
-            b = 0.5 + l * 0.3
-            return (r, g, b, 0.7)
+        # Автономное изменение цвета + влияние частот
+        color_time = self.time * 0.15
+        r_mod = 0.1 * np.sin(color_time)
+        g_mod = 0.1 * np.sin(color_time + 2.1)
+        b_mod = 0.1 * np.sin(color_time + 4.2)
+
+        # Цвет динамически меняется от частот
+        # Bass - доминирует в спокойные моменты
+        # Mids - добавляет активности
+        # Highs - добавляет яркости
+
+        total_power = l + m + h
+
+        if total_power > 1.0:  # Активная музыка
+            r = 0.7 + l * 0.3 + m * 0.1 + r_mod
+            g = 0.3 + m * 0.5 + h * 0.1 + g_mod
+            b = 0.2 + h * 0.6 + l * 0.1 + b_mod
+            alpha = 0.9
+        elif total_power > 0.5:  # Средняя активность
+            r = 0.5 + l * 0.4 + r_mod
+            g = 0.4 + m * 0.4 + g_mod
+            b = 0.3 + h * 0.4 + b_mod
+            alpha = 0.8
+        else:  # Спокойная музыка
+            r = 0.3 + l * 0.6 + r_mod
+            g = 0.2 + m * 0.3 + g_mod
+            b = 0.1 + h * 0.2 + b_mod
+            alpha = 0.7 + l * 0.2  # Bass делает волну более заметной
+
+        # Ограничиваем значения между 0 и 1
+        r = self.clamp_color_value(r)
+        g = self.clamp_color_value(g)
+        b = self.clamp_color_value(b)
+        alpha = self.clamp_color_value(alpha)
+
+        return (r, g, b, alpha)
 
     def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4'):
         """Создаёт анимацию волн."""
-        fig, ax = plt.subplots(figsize=(12, 6), facecolor='black')
+        fig, ax = plt.subplots(figsize=(14, 7), facecolor='black')
         ax.set_facecolor('black')
 
         waves = []
         for i in range(3):
-            wave_line, = ax.plot([], [], linewidth=2.5 - i * 0.5, alpha=0.9 - i * 0.2)
+            wave_line, = ax.plot([], [], linewidth=3.0 - i * 0.7, alpha=0.95 - i * 0.2)
             waves.append(wave_line)
 
         ax.set_xlim(0, 4 * np.pi)
-        ax.set_ylim(-5, 5)
+        ax.set_ylim(-7, 7)  # Увеличил для большей динамики
         ax.axis('off')
 
-        text = ax.text(0.02, 0.95, '', transform=ax.transAxes,
-                       color='white', fontsize=10, fontfamily='monospace')
+        text = ax.text(0.02, 0.96, '', transform=ax.transAxes,
+                       color='white', fontsize=10, fontfamily='monospace',
+                       bbox=dict(boxstyle='round', facecolor='black', alpha=0.7))
 
         def init():
             for wave in waves:
@@ -130,29 +207,38 @@ class WaveVisualizer:
             x, base_wave, powers = self.generate_wave(time_sec)
 
             for i, wave_line in enumerate(waves):
-                phase_shift = i * 0.5 * time_sec
-                layer_wave = base_wave * (1.0 - i * 0.2) * np.sin(x + phase_shift)
+                # Разные фазовые сдвиги для слоев
+                phase_shift = i * 1.0 + self.autonomous_phase_mod * (i + 1)
+                # Разная форма для каждого слоя
+                layer_factor = 1.0 - i * 0.25
+                frequency_factor = 1.0 + i * 0.1
+
+                layer_wave = (base_wave * layer_factor *
+                              np.sin(frequency_factor * x * 0.2 + phase_shift))
 
                 color = self.get_wave_color(powers)
-                layer_color = (color[0] * (1 - i * 0.1),
-                               color[1] * (1 - i * 0.05),
-                               color[2] * (1 + i * 0.1),
-                               color[3])
+
+                # Динамические цвета для слоев
+                r = self.clamp_color_value(color[0] * (1.0 - i * 0.15))
+                g = self.clamp_color_value(color[1] * (1.0 - i * 0.1))
+                b = self.clamp_color_value(color[2] * (1.0 + i * 0.2))
+                a = self.clamp_color_value(color[3] * (0.95 - i * 0.15))
+
+                layer_color = (r, g, b, a)
 
                 wave_line.set_data(x, layer_wave)
                 wave_line.set_color(layer_color)
 
-            info = (f"Time: {time_sec:.1f}s\n"
-                    f"Lows: {powers['lows']:.2f}\n"
-                    f"Mids: {powers['mids']:.2f}\n"
-                    f"Highs: {powers['highs']:.2f}")
+            info = (f"Time: {time_sec:.1f}s | Freq: {self.current_frequency:.2f}\n"
+                    f"Bass: {powers['lows']:.2f} | Mids: {powers['mids']:.2f} | Highs: {powers['highs']:.2f}\n"
+                    f"Total: {sum(powers.values()):.2f}")
             text.set_text(info)
 
             return waves + [text]
 
         total_frames = int(duration_sec * fps)
         ani = animation.FuncAnimation(fig, update, frames=total_frames,
-                            init_func=init, blit=True, interval=1000 / fps)
+                                      init_func=init, blit=True, interval=1000 / fps)
 
         writer = FFMpegWriter(fps=fps, metadata=dict(artist='SpectroSync'))
         ani.save(output_file, writer=writer, dpi=150)
@@ -160,7 +246,7 @@ class WaveVisualizer:
 
         return ani
 
-    def render_with_audio(self, temp_output_path ='temp_video.mp4', duration_sec=5, fps=30, output_path='output.mp4'):
+    def render_with_audio(self, temp_output_path='temp_video.mp4', duration_sec=5, fps=30, output_path='output.mp4'):
         temp_video = temp_output_path
         temp_audio = 'temp_audio.mp3'
 
@@ -197,9 +283,9 @@ class WaveVisualizer:
 
 
 a = Analizator()
-a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\music.mp3") #absolute path
+a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\music.mp3")  # absolute path
 a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
 
-visual = viz.render_with_audio(duration_sec=120, output_path='waves_audio.mp4', fps=165)
+visual = viz.render_with_audio(duration_sec=80, output_path='overdose4.mp4', fps=60)
