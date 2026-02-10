@@ -45,13 +45,13 @@ class WaveVisualizer:
 
         # Автономные осцилляторы для плавного движения
         self.autonomous_amplitude = 1.0
-        self.autonomous_frequency = 1.0
-        self.autonomous_phase_mod = 0.0
+        self.autonomous_frequency = 0.7
+        self.autonomous_phase_mod = 1.0
 
         # Для плавного изменения частоты
         self.current_frequency = 1.0
         self.target_frequency = 1.0
-        self.frequency_smoothness = 0.03  # Плавность изменения частоты
+        self.frequency_smoothness = 0.04  # Плавность изменения частоты
 
     def precompute_bands(self):
         spec = self.analyzer.spectrogram
@@ -80,7 +80,7 @@ class WaveVisualizer:
         self.time += dt
         self.base_phase += self.base_phase_speed * dt
         self.autonomous_amplitude = 1.0 + 0.3 * np.sin(self.time * 0.3)
-        self.autonomous_phase_mod = 0.5 * np.sin(self.time * 0.08)
+        self.autonomous_phase_mod = 15 * np.sin(self.time * 0.08)
         self.target_frequency = 1.0 + powers['mids'] * 2.0
         self.current_frequency += (self.target_frequency - self.current_frequency) * self.frequency_smoothness
         self.current_frequency += 0.1 * np.sin(self.time * 0.15)
@@ -94,12 +94,12 @@ class WaveVisualizer:
 
         x = np.linspace(0, 4 * np.pi, length)
 
-        amplitude_mod = 1.0 + powers['lows'] * 3.0  # Сильное влияние на высоту
+        amplitude_mod = 0.2 + powers['lows'] * 5.0  # Сильное влияние на высоту
 
-        final_amplitude = self.autonomous_amplitude * amplitude_mod
+        final_amplitude = self.autonomous_amplitude * amplitude_mod + (powers['mids'] * 2) + (powers['highs'] * 6) # Разделить на 3 группы(горки бассов, голоса, мелодии)
         final_frequency = max(0.5, min(3.0, self.current_frequency))  # Ограничиваем частоту
 
-        phase = self.base_phase + self.autonomous_phase_mod + time_sec * 0.5
+        phase = self.base_phase + self.autonomous_phase_mod
 
         base_wave = final_amplitude * np.sin(final_frequency * x + phase)
 
@@ -107,10 +107,10 @@ class WaveVisualizer:
         harmonic_phase = phase * 1.5 + np.sin(self.time * 0.3)
         harmonic = harmonic_amp * np.sin(2 * final_frequency * x + harmonic_phase)
 
-        detail_amp = powers['highs'] * 0.4  # Увеличил для большего эффекта
+        detail_amp = powers['highs'] * 0.4 # Увеличил для большего эффекта
 
         noise_freq = 8 + powers['highs'] * 6  # Частота шума зависит от highs
-        detail = detail_amp * np.sin(noise_freq * x + self.time * 3) * 0.7
+        detail = detail_amp * np.sin(noise_freq * x + self.time * 3) * 0.4
 
         smooth_noise = np.convolve(np.random.randn(length), np.ones(3) / 3, mode='same') # Добавляем немного сглаженного случайного шума
         detail += detail_amp * smooth_noise * 0.2
@@ -288,4 +288,4 @@ a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
 
-visual = viz.render_with_audio(duration_sec=80, output_path='overdose4.mp4', fps=60)
+visual = viz.render_with_audio(duration_sec=int(a._get_audio_duration()), output_path='agfs4.mp4', fps=60)
