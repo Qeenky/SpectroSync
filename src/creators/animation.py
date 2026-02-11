@@ -94,7 +94,7 @@ class WaveVisualizer:
 
         x = np.linspace(0, 4 * np.pi, length)
 
-        amplitude_mod = 0.2 + powers['lows'] * 5.0  # Сильное влияние на высоту
+        amplitude_mod = 0.1 + powers['lows'] * 5.0  # Сильное влияние на высоту
 
         final_amplitude = self.autonomous_amplitude * amplitude_mod + (powers['mids'] * 2) + (powers['highs'] * 6) # Разделить на 3 группы(горки бассов, голоса, мелодии)
         final_frequency = max(0.5, min(3.0, self.current_frequency))  # Ограничиваем частоту
@@ -288,4 +288,4 @@ a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
 
-visual = viz.render_with_audio(duration_sec=int(a._get_audio_duration()), output_path='agfs4.mp4', fps=60)
+visual = viz.render_with_audio(duration_sec=int(a._get_audio_duration()), output_path='overdose1.mp4', fps=60)
