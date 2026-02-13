@@ -42,11 +42,11 @@ class WaveVisualizer:
 
         # Параметры автономной динамической волны
         self.base_phase = 0.0
-        self.base_phase_speed = 10.0
+        self.base_phase_speed = 7.0
         self.time = 0.0
 
         # Автономные осцилляторы
-        self.autonomous_amplitude = 1.0
+        self.autonomous_amplitude = 0.0
         self.autonomous_frequency = 0.7
         self.autonomous_phase_mod = 1.0
 
@@ -102,7 +102,7 @@ class WaveVisualizer:
             }
         }
 
-        self.current_palette = 'neon'  # Стартовая палитра
+        self.current_palette = 'ocean'  # Стартовая палитра
 
     def precompute_bands(self):
         spec = self.analyzer.spectrogram
@@ -149,9 +149,9 @@ class WaveVisualizer:
         self.current_vocal_freq += (self.target_vocal_freq - self.current_vocal_freq) * self.frequency_smoothness
 
         # Добавляем автономные колебания (индивидуальные)
-        self.current_bass_freq += 0.05 * np.sin(self.time * 0.2)
-        self.current_melody_freq += 0.08 * np.sin(self.time * 0.25)
-        self.current_vocal_freq += 0.12 * np.sin(self.time * 0.3)
+        #self.current_bass_freq += 0.05 * np.sin(self.time * 0.2)
+        #self.current_melody_freq += 0.08 * np.sin(self.time * 0.25)
+        #self.current_vocal_freq += 0.12 * np.sin(self.time * 0.3)
 
 
     def clamp_color_value(self, value):
@@ -223,31 +223,6 @@ class WaveVisualizer:
 
         return (r, g, b, self.clamp_color_value(alpha))
 
-    def get_dynamic_color(self, base_color, power, frequency_type):
-        """Динамическое изменение цвета на основе частоты и мощности"""
-        r, g, b = base_color
-
-        # Модуляция на основе текущей частоты волны
-        if frequency_type == 'bass':
-            freq_mod = 0.2 * np.sin(self.current_bass_freq * self.time)
-        elif frequency_type == 'melody':
-            freq_mod = 0.2 * np.sin(self.current_melody_freq * self.time)
-        else:
-            freq_mod = 0.2 * np.sin(self.current_vocal_freq * self.time)
-
-        # Модуляция на основе мощности
-        power_mod = power * 0.3
-
-        # Модуляция на основе битов (если есть детекция)
-        beat_mod = 0.0
-        if hasattr(self, 'is_beat') and self.is_beat:
-            beat_mod = 0.4
-
-        r = self.clamp_color_value(r + freq_mod + power_mod + beat_mod)
-        g = self.clamp_color_value(g + freq_mod * 0.7 + power_mod * 0.5)
-        b = self.clamp_color_value(b + freq_mod * 0.5 + power_mod * 0.3)
-
-        return (r, g, b)
 
     def get_gradient_color(self, power, wave_type, time_offset=0):
         """Создает эффект градиента во времени"""
@@ -365,9 +340,9 @@ class WaveVisualizer:
         vocal_wave = self.generate_vocal_wave(x, powers['highs'])
 
         # Получаем цвета
-        bass_color = self.get_bass_color(powers['lows'])
-        melody_color = self.get_melody_color(powers['mids'])
-        vocal_color = self.get_vocal_color(powers['highs'])
+        bass_color = self.get_gradient_color(powers['lows'], "bass")
+        melody_color = self.get_gradient_color(powers['mids'], "melody")
+        vocal_color = self.get_gradient_color(powers['highs'], "vocal")
 
         waves_data = [
             {'y': bass_wave, 'color': bass_color, 'width': 3.0, 'name': 'BASS'},
@@ -514,6 +489,6 @@ a._precompute_all_powers()
 viz = WaveVisualizer(a)
 visual = viz.render_with_audio(
     duration_sec=int(a._get_audio_duration()),
-    output_path='fendi5.mp4',
+    output_path='Sleeep4.mp4',
     fps=60
 )
