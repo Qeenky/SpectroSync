@@ -8,7 +8,10 @@ class Analizator:
         self.spectrogram = None
         self.audio = None
         self.sr = None
-        self.all_powers = None
+        self.low_bands = None
+        self.medium_bands = None
+        self.high_bands = None
+
 
     def _set_audio_path(self, audio_path: str):
         self.audio_path = audio_path
@@ -18,7 +21,11 @@ class Analizator:
         if self.spectrogram is None:
             return
         low_bands = self.spectrogram[:30, :]
-        self.all_powers = low_bands.mean(axis=0)
+        medium_bands = self.spectrogram[30:60, :]
+        high_bands = self.spectrogram[60:128, :]
+        self.low_bands = low_bands.mean(axis=0)
+        self.medium_bands = medium_bands.mean(axis=0)
+        self.high_bands = high_bands.mean(axis=0)
 
     def _get_audio_sr(self) -> Tuple:
         if self.audio_path is None:
@@ -50,13 +57,24 @@ class Analizator:
             return self.all_powers[frame_index]
         return 0.0
 
-    def _get_power_by_time(self, time_sec: float) -> float:
+    def _get_power_by_time(self, time_sec: float) -> dict:
+        """:return {low:..., medium:..., high:...}"""
+
         if not hasattr(self, 'all_powers'):
-            return 0.0
-        frame_index = int(time_sec * self.sr / 512)
-        if frame_index >= len(self.all_powers):
-            frame_index = len(self.all_powers) - 1
-        return self.all_powers[frame_index]
+            return dict()
+        frame_index_low = int(time_sec * self.sr / 512)
+        frame_index_medium = int(time_sec * self.sr / 512)
+        frame_index_high = int(time_sec * self.sr / 512)
+        if frame_index_low >= len(self.low_bands):
+            frame_index_low = len(self.low_bands) - 1
+        if frame_index_medium >= len(self.medium_bands):
+            frame_index_medium = len(self.medium_bands) - 1
+        if frame_index_high >= len(self.high_bands):
+            frame_index_high = len(self.high_bands) - 1
+
+        return {"low":self.low_bands[frame_index_low],
+                "medium":self.medium_bands[frame_index_medium],
+                "high":self.high_bands[frame_index_high]}
 
     def _get_audio_duration(self) -> float:
         if self.spectrogram is None or self.sr is None:

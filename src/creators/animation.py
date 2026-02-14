@@ -6,39 +6,20 @@ import numpy as np
 import subprocess, os
 
 
-class Animator:
-    def __init__(self):
-        self.frames = range(0)
-        self.powers = []
-
-    def _set_frames(self, frames: int):
-        self.frames = range(frames)
-
-    def _set_power(self, analizator_obj: object[Analizator], frames: int):
-        self._set_frames(frames)
-        if self.frames == range(0):
-            return
-        self.powers = [analizator_obj._get_lows_power(i) for i in self.frames]
-
-    def _create_simple_liner_graphic(self, analizator_obj: object[Analizator], frames: int):
-        self._set_power(analizator_obj, frames)
-        if self.frames == range(0) or self.powers == []:
-            return
-        plt.figure(figsize=(10, 4))
-        plt.plot(self.frames, self.powers, 'b-', linewidth=2)
-        plt.title(f"Мощность низких частот во времени ( первые {frames} кадров )")
-        plt.xlabel("№ кадра (frame_index)")
-        plt.ylabel("Мощность")
-        plt.grid(True, alpha=0.3)
-        plt.show()
-
-
-
 
 class WaveVisualizer:
-    def __init__(self, Analizator):
+    def __init__(self, Analizator: object[Analizator]):
         self.analyzer = Analizator
-        self.precompute_bands()
+
+        # Получаем частоты
+        self.analyzer._precompute_all_powers()
+        self.lows = self.analyzer.low_bands
+        self.mids = self.analyzer.medium_bands
+        self.highs = self.analyzer.high_bands
+        self.lows_norm = self.lows / (self.lows.max() + 0.01)
+        self.mids_norm = self.mids / (self.mids.max() + 0.01)
+        self.highs_norm = self.highs / (self.highs.max() + 0.01)
+
 
         # Параметры автономной динамической волны
         self.base_phase = 0.0
@@ -47,7 +28,7 @@ class WaveVisualizer:
 
         # Автономные осцилляторы
         self.autonomous_amplitude = 0.0
-        self.autonomous_frequency = 0.7
+        self.autonomous_frequency = 0.7 * 10
         self.autonomous_phase_mod = 1.0
 
         # Для плавного изменения частоты
@@ -69,54 +50,6 @@ class WaveVisualizer:
         self.melody_phase = 2.1
         self.vocal_phase = 4.2
 
-        self.color_palettes = {
-            'neon': {
-                'bass': [(1.0, 0.2, 0.2), (0.9, 0.1, 0.5), (1.0, 0.4, 0.0)],  # Красный → Розовый → Оранжевый
-                'melody': [(0.2, 1.0, 0.2), (0.1, 0.9, 0.5), (0.0, 1.0, 0.8)],  # Зеленый → Мятный → Бирюзовый
-                'vocal': [(0.2, 0.2, 1.0), (0.5, 0.1, 0.9), (0.8, 0.0, 1.0)]  # Синий → Фиолетовый → Пурпурный
-            },
-            'sunset': {
-                'bass': [(1.0, 0.4, 0.2), (1.0, 0.6, 0.0), (1.0, 0.3, 0.3)],  # Закатные тона
-                'melody': [(1.0, 0.8, 0.2), (1.0, 0.9, 0.4), (1.0, 0.7, 0.1)],  # Золотистые
-                'vocal': [(1.0, 0.5, 0.5), (1.0, 0.4, 0.6), (1.0, 0.3, 0.7)]  # Розовые
-            },
-            'ocean': {
-                'bass': [(0.1, 0.3, 0.8), (0.2, 0.4, 0.9), (0.0, 0.2, 0.7)],  # Глубокий синий
-                'melody': [(0.2, 0.7, 0.9), (0.3, 0.8, 1.0), (0.1, 0.6, 0.8)],  # Бирюзовый
-                'vocal': [(0.4, 0.9, 0.9), (0.5, 1.0, 1.0), (0.3, 0.8, 0.8)]  # Морская волна
-            },
-            'fire': {
-                'bass': [(1.0, 0.1, 0.0), (1.0, 0.3, 0.0), (1.0, 0.0, 0.0)],  # Красный
-                'melody': [(1.0, 0.5, 0.0), (1.0, 0.6, 0.0), (1.0, 0.4, 0.0)],  # Оранжевый
-                'vocal': [(1.0, 0.9, 0.0), (1.0, 1.0, 0.0), (1.0, 0.8, 0.0)]  # Желтый
-            },
-            'forest': {
-                'bass': [(0.2, 0.5, 0.2), (0.1, 0.4, 0.1), (0.3, 0.6, 0.2)],  # Темно-зеленый
-                'melody': [(0.3, 0.7, 0.3), (0.4, 0.8, 0.3), (0.2, 0.6, 0.2)],  # Зеленый
-                'vocal': [(0.5, 0.9, 0.4), (0.6, 1.0, 0.5), (0.4, 0.8, 0.3)]  # Салатовый
-            },
-            'candy': {
-                'bass': [(1.0, 0.5, 0.8), (0.9, 0.4, 0.7), (1.0, 0.6, 0.9)],  # Розовый
-                'melody': [(0.6, 0.8, 1.0), (0.5, 0.7, 0.9), (0.7, 0.9, 1.0)],  # Голубой
-                'vocal': [(1.0, 0.9, 0.5), (0.9, 0.8, 0.4), (1.0, 1.0, 0.6)]  # Желтый
-            }
-        }
-
-        self.current_palette = 'ocean'  # Стартовая палитра
-
-    def precompute_bands(self):
-        spec = self.analyzer.spectrogram
-
-        # Разделяем частоты
-        self.lows = spec[:20, :].mean(axis=0)
-        self.mids = spec[20:70, :].mean(axis=0)
-        self.highs = spec[70:128, :].mean(axis=0)
-
-        # Нормализация
-        self.lows_norm = self.lows / (self.lows.max() + 0.01)
-        self.mids_norm = self.mids / (self.mids.max() + 0.01)
-        self.highs_norm = self.highs / (self.highs.max() + 0.01)
-
     def get_powers_at_time(self, time_sec):
         frame_idx = int(time_sec * self.analyzer.sr / 512)
         if frame_idx >= len(self.lows):
@@ -133,96 +66,26 @@ class WaveVisualizer:
         self.time += dt
         self.base_phase += self.base_phase_speed * dt
         self.autonomous_amplitude = 1.0 + 0.3 * np.sin(self.time * 0.3)
-        self.autonomous_phase_mod = 15 * np.sin(self.time * 0.08)
+        self.autonomous_phase_mod = 15 * (np.sin(self.time * 0.08)) ** 2
 
         # Каждая волна теперь имеет свою целевую частоту!
-        # Bass frequency - зависит от баса
-        self.target_bass_freq = 0.5 + powers['lows'] * 1.5
-        # Melody frequency - зависит от мидов
-        self.target_melody_freq = 1.0 + powers['mids'] * 2.0
-        # Vocal frequency - зависит от высоких
-        self.target_vocal_freq = 2.0 + powers['highs'] * 3.0
+        self.target_bass_freq = 0.1 + powers['lows'] * 8.0
+        self.target_melody_freq = 0.2 + powers['mids'] * 6.0
+        self.target_vocal_freq = 0.4 + powers['highs'] * 10.0
 
         # Плавное обновление каждой частоты
         self.current_bass_freq += (self.target_bass_freq - self.current_bass_freq) * self.frequency_smoothness
         self.current_melody_freq += (self.target_melody_freq - self.current_melody_freq) * self.frequency_smoothness
         self.current_vocal_freq += (self.target_vocal_freq - self.current_vocal_freq) * self.frequency_smoothness
 
-        # Добавляем автономные колебания (индивидуальные)
-        #self.current_bass_freq += 0.05 * np.sin(self.time * 0.2)
-        #self.current_melody_freq += 0.08 * np.sin(self.time * 0.25)
-        #self.current_vocal_freq += 0.12 * np.sin(self.time * 0.3)
+        self.bass_phase += self.current_bass_freq * dt * 2 * np.pi
+        self.melody_phase += self.current_melody_freq * dt * 2 * np.pi
+        self.vocal_phase += self.current_vocal_freq * dt * 2 * np.pi
 
 
     def clamp_color_value(self, value):
         """Ограничивает значение цвета между 0 и 1"""
         return max(0.0, min(1.0, float(value)))
-
-    def get_bass_color(self, power):
-        """Цвет для бас-волны с палитрой"""
-        palette = self.color_palettes[self.current_palette]['bass']
-
-        # Выбираем цвет из палитры на основе мощности
-        if power > 0.7:
-            r, g, b = palette[0]  # Яркий цвет
-            alpha = 0.95
-        elif power > 0.3:
-            r, g, b = palette[1]  # Средний цвет
-            alpha = 0.85
-        else:
-            r, g, b = palette[2]  # Приглушенный цвет
-            alpha = 0.7 + power * 0.2
-
-        # Автономные модуляции
-        mod = 0.1 * np.sin(self.time * 0.5)
-        r = self.clamp_color_value(r + mod * 0.5)
-        g = self.clamp_color_value(g + mod * 0.3)
-        b = self.clamp_color_value(b + mod * 0.2)
-
-        return (r, g, b, self.clamp_color_value(alpha))
-
-    def get_melody_color(self, power):
-        """Цвет для мелодии с палитрой"""
-        palette = self.color_palettes[self.current_palette]['melody']
-
-        if power > 0.7:
-            r, g, b = palette[0]
-            alpha = 0.9
-        elif power > 0.3:
-            r, g, b = palette[1]
-            alpha = 0.8
-        else:
-            r, g, b = palette[2]
-            alpha = 0.6 + power * 0.2
-
-        mod = 0.1 * np.sin(self.time * 0.5 + 2.1)
-        r = self.clamp_color_value(r + mod * 0.3)
-        g = self.clamp_color_value(g + mod * 0.5)
-        b = self.clamp_color_value(b + mod * 0.4)
-
-        return (r, g, b, self.clamp_color_value(alpha))
-
-    def get_vocal_color(self, power):
-        """Цвет для вокала с палитрой"""
-        palette = self.color_palettes[self.current_palette]['vocal']
-
-        if power > 0.7:
-            r, g, b = palette[0]
-            alpha = 0.85
-        elif power > 0.3:
-            r, g, b = palette[1]
-            alpha = 0.75
-        else:
-            r, g, b = palette[2]
-            alpha = 0.6 + power * 0.2
-
-        mod = 0.1 * np.sin(self.time * 0.5 + 4.2)
-        r = self.clamp_color_value(r + mod * 0.4)
-        g = self.clamp_color_value(g + mod * 0.3)
-        b = self.clamp_color_value(b + mod * 0.6)
-
-        return (r, g, b, self.clamp_color_value(alpha))
-
 
     def get_gradient_color(self, power, wave_type, time_offset=0):
         """Создает эффект градиента во времени"""
@@ -344,6 +207,10 @@ class WaveVisualizer:
         melody_color = self.get_gradient_color(powers['mids'], "melody")
         vocal_color = self.get_gradient_color(powers['highs'], "vocal")
 
+        bass_color = self.get_accent_color(bass_color, powers['lows'])
+        melody_color = self.get_accent_color(melody_color, powers['mids'])
+        vocal_color = self.get_accent_color(vocal_color, powers['highs'])
+
         waves_data = [
             {'y': bass_wave, 'color': bass_color, 'width': 3.0, 'name': 'BASS'},
             {'y': melody_wave, 'color': melody_color, 'width': 2.0, 'name': 'MELODY'},
@@ -397,17 +264,7 @@ class WaveVisualizer:
             time_sec = frame / fps
             x, waves_data, powers = self.generate_waves(time_sec)
 
-            # TODO: Изменить цветовые гаммы
-            if powers['highs'] > 0.9 and powers['lows'] < 0.2:
-                viz.current_palette = 'ocean'  # Вокал доминирует
-            elif powers['lows'] > 0.8:
-                viz.current_palette = 'ocean'  # Басс доминирует
-            elif powers['mids'] > 0.8:
-                viz.current_palette = 'ocean'  # Мелодия доминирует
-            elif sum(powers.values()) > 2.0:
-                viz.current_palette = 'ocean'  # Вся музыка мощная
 
-            # Обновляем каждую линию
             for i, (wave_line, wave_data) in enumerate(zip(waves, waves_data)):
                 wave_line.set_data(x, wave_data['y'])
                 color = wave_data['color']
@@ -428,7 +285,6 @@ class WaveVisualizer:
                     f"MELODY: [{melody_bar}] {powers['mids']:.2f}\n"
                     f"VOCAL:  [{vocal_bar}] {powers['highs']:.2f}")
             info_text.set_text(info)
-            palette_text.set_text(f"Palette: {viz.current_palette.upper()}")
 
             return waves + [info_text, legend, palette_text]
 
@@ -489,6 +345,6 @@ a._precompute_all_powers()
 viz = WaveVisualizer(a)
 visual = viz.render_with_audio(
     duration_sec=int(a._get_audio_duration()),
-    output_path='Sleeep4.mp4',
+    output_path='Sleep8.mp4',
     fps=60
 )
