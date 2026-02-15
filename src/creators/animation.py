@@ -187,22 +187,19 @@ class WaveVisualizer:
 
         return wave
 
-    def generate_waves(self, time_sec, length=1000):
+    def generate_waves(self, time_sec, length=1920):
         """Генерирует три волны с общей автономной динамикой"""
         dt = 1 / 60.0
         powers = self.get_powers_at_time(time_sec)
 
-        # Обновляем общее автономное движение
         self.update_autonomous_motion(dt, powers)
 
         x = np.linspace(0, 4 * np.pi, length)
 
-        # Генерируем каждую волну с её мощностью
         bass_wave = self.generate_bass_wave(x, powers['lows'])
         melody_wave = self.generate_melody_wave(x, powers['mids'])
         vocal_wave = self.generate_vocal_wave(x, powers['highs'])
 
-        # Получаем цвета
         bass_color = self.get_gradient_color(powers['lows'], "bass")
         melody_color = self.get_gradient_color(powers['mids'], "melody")
         vocal_color = self.get_gradient_color(powers['highs'], "vocal")
@@ -219,55 +216,41 @@ class WaveVisualizer:
 
         return x, waves_data, powers
 
-    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4', dpi = 150):
+    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4', dpi=150):
         """Создаёт анимацию с тремя независимыми волнами"""
-        # Size
         figsize_width = 1920 / dpi
         figsize_height = 270 / dpi
 
         fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='black', dpi=dpi)
         ax.set_facecolor('black')
 
-        # Создаем три линии
+        # Убираем все отступы
+        plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
         bass_line, = ax.plot([], [], linewidth=4.0)
         melody_line, = ax.plot([], [], linewidth=2.5)
         vocal_line, = ax.plot([], [], linewidth=1.5)
 
         waves = [bass_line, melody_line, vocal_line]
 
+        # Устанавливаем границы точно по краям
         ax.set_xlim(0, 4 * np.pi)
         ax.set_ylim(-8, 8)
         ax.axis('off')
 
-        # Текстовая информация
-        info_text = ax.text(0.02, 0.96, '', transform=ax.transAxes,
-                            color='white', fontsize=10, fontfamily='monospace',
-                            bbox=dict(boxstyle='round', facecolor='black', alpha=0.7))
-
-        # Легенда
-        legend_elements = [
-            plt.Line2D([0], [0], color='#ff4444', lw=4, label='BASS'),
-            plt.Line2D([0], [0], color='#44ff44', lw=2.5, label='MELODY'),
-            plt.Line2D([0], [0], color='#4444ff', lw=1.5, label='VOCAL')
-        ]
-        legend = ax.legend(handles=legend_elements, loc='upper right',
-                           facecolor='black', edgecolor='white',
-                           labelcolor='white', fontsize=9)
-
-        palette_text = ax.text(0.02, 0.86, '', transform=ax.transAxes,
-                               color='white', fontsize=8, fontfamily='monospace',
-                               bbox=dict(boxstyle='round', facecolor='black', alpha=0.5))
+        # Убираем тики и всё остальное
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.margins(0)
 
         def init():
             for wave in waves:
                 wave.set_data([], [])
-            info_text.set_text('')
-            return waves + [info_text, legend]
+            return waves
 
         def update(frame):
             time_sec = frame / fps
-            x, waves_data, powers = self.generate_waves(time_sec)
-
+            x, waves_data, powers = self.generate_waves(time_sec, 1920)
 
             for i, (wave_line, wave_data) in enumerate(zip(waves, waves_data)):
                 wave_line.set_data(x, wave_data['y'])
@@ -276,21 +259,7 @@ class WaveVisualizer:
                 wave_line.set_alpha(color[3])
                 wave_line.set_linewidth(wave_data['width'])
 
-            # Информация с уровнями
-            bass_bar = '▬' * int(powers['lows'] * 20) + '─' * (20 - int(powers['lows'] * 20))
-            melody_bar = '▬' * int(powers['mids'] * 20) + '─' * (20 - int(powers['mids'] * 20))
-            vocal_bar = '▬' * int(powers['highs'] * 20) + '─' * (20 - int(powers['highs'] * 20))
-
-            info = (f"Time: {time_sec:.1f}s | "
-                    f"Bass: {self.current_bass_freq:.2f}Hz | "
-                    f"Mel: {self.current_melody_freq:.2f}Hz | "
-                    f"Voc: {self.current_vocal_freq:.2f}Hz\n"
-                    f"BASS:   [{bass_bar}] {powers['lows']:.2f}\n"
-                    f"MELODY: [{melody_bar}] {powers['mids']:.2f}\n"
-                    f"VOCAL:  [{vocal_bar}] {powers['highs']:.2f}")
-            info_text.set_text(info)
-
-            return waves + [info_text, legend, palette_text]
+            return waves
 
         total_frames = int(duration_sec * fps)
         ani = animation.FuncAnimation(fig, update, frames=total_frames,
@@ -347,8 +316,8 @@ a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\music.mp
 a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
-visual = viz.render_with_audio(
+visual = viz.create_wave_animation(
     duration_sec=int(a._get_audio_duration()),
-    output_path='Sleep8.mp4',
+    output_file='ff1.mp4',
     fps=60
 )

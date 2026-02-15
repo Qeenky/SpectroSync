@@ -9,24 +9,40 @@ class FFmpegVideoCreator(IVideoCreator):
     def __init__(self, repository: IMediaRepository):
         self._repo = repository
 
-    def create_video(self, config: VideoConfig) -> bool:
+    def create_video(self, config: VideoConfig, scale_mode='pad') -> bool:
+        """
+        scale_mode: 'stretch' - растянуть, 'crop' - обрезать, 'pad' - черные полосы
+        """
         image = self._repo.get_image()
         audio = self._repo.get_audio()
 
-        if not image:
-            raise ValueError("Image not set")
-        if not audio:
-            raise ValueError("Audio not set")
+        if not image or not audio:
+            raise ValueError("Image or Audio not set")
 
         audio_duration = self._get_audio_duration(audio.path)
-
         quality_params = self._get_max_quality_params(config)
+
+        if scale_mode == 'stretch':
+            filter_complex = "scale=1920:1080,setsar=1:1,format=yuv420p"
+        elif scale_mode == 'crop':
+            filter_complex = (
+                "crop=min(iw\\,ih*16/9):min(ih\\,iw*9/16),"
+                "scale=1920:1080,"
+                "format=yuv420p"
+            )
+        else:
+            filter_complex = (
+                "scale=1920:1080:force_original_aspect_ratio=1,"
+                "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,"
+                "format=yuv420p"
+            )
 
         cmd = [
             'ffmpeg',
             '-loop', '1',
             '-i', image.path,
             '-i', audio.path,
+            '-vf', filter_complex,
             *quality_params,
             '-t', audio_duration,
             '-shortest',
@@ -37,7 +53,7 @@ class FFmpegVideoCreator(IVideoCreator):
         print(f"Запуск команды: {' '.join(cmd[:10])}...")
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 check=True,
                 capture_output=True,
@@ -46,13 +62,8 @@ class FFmpegVideoCreator(IVideoCreator):
             )
             print(f"+ Видео создано: {config.output_path}")
             return True
-
-        except subprocess.TimeoutExpired:
-            print("- Превышено время кодирования (1 час)")
-            return False
-        except subprocess.CalledProcessError as e:
-            print(f"- Ошибка FFmpeg:")
-            print(e.stderr[:500])
+        except Exception as e:
+            print(f"- Ошибка: {e}")
             return False
 
     def _get_max_quality_params(self, config: VideoConfig) -> list:
@@ -78,106 +89,54 @@ class FFmpegVideoCreator(IVideoCreator):
             '-movflags', '+faststart'
         ]
 
-    def create_ultra_quality(self,
-                             output_path: str = "ultra_quality.mp4",
-                             resolution: tuple = (1920, 1080),
-                             fps: int = 60) -> bool:
-        config = VideoConfig(
-            output_path=output_path,
-            resolution=resolution,
-            fps=fps,
-            video_codec="libx264",
-            audio_codec="aac"
-        )
-        return self.create_video(config)
 
-    def create_lossless(self,
-                        output_path: str = "lossless.mkv",
-                        resolution: tuple = (1920, 1080)) -> bool:
-        image = self._repo.get_image()
-        audio = self._repo.get_audio()
+    def overlay_videos(self, main_video, overlay_video, output_video, overlay_position='bottom'):
+        """
+        Наложение видео с волнами на основное видео
 
-        if not image or not audio:
-            return False
+        Args:
+            main_video: путь к основному видео (1920x1080)
+            overlay_video: путь к видео с волнами (1920x270)
+            output_video: путь для сохранения результата
+            overlay_position: 'top' (сверху) или 'bottom' (снизу)
+        """
 
-        audio_duration = self._get_audio_duration(audio.path)
+        if overlay_position == 'bottom':
+            y_position = '810'
+        else:
+            y_position = '0'
 
-        cmd = [
+        ffmpeg_cmd = [
             'ffmpeg',
-            '-loop', '1',
-            '-framerate', '1',
-            '-i', image.path,
-            '-i', audio.path,
-            '-c:v', 'ffv1',
-            '-level', '3',
-            '-coder', '1',
-            '-context', '1',
-            '-g', '1',
-            '-slices', '24',
-            '-slicecrc', '1',
-            '-pix_fmt', 'bgr0',
-            '-c:a', 'flac',
-            '-compression_level', '12',
-            '-ar', '96000',
-
-            '-s', f"{resolution[0]}x{resolution[1]}",
-
-            '-t', audio_duration,
-            '-shortest',
+            '-i', main_video,
+            '-i', overlay_video,
+            '-filter_complex',
+            f'[0:v]scale=1920:1080[main]; [1:v]scale=1920:270[over]; [main][over]overlay=0:{y_position}[out]',
+            '-map', '[out]',
+            '-map', '0:a?',
+            '-c:a', 'copy',
             '-y',
-            output_path
+            output_video
         ]
 
-        print("- Создание lossless видео. Файл будет ОГРОМНЫМ!")
-
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-            print(f"+ Lossless видео создано: {output_path}")
+            subprocess.run(
+                ffmpeg_cmd,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"Видео успешно создано: {output_video}")
             return True
+
         except subprocess.CalledProcessError as e:
-            print(f"- Ошибка: {e.stderr[:500]}")
+            print(f"Ошибка при выполнении FFmpeg:")
+            print(f"STDERR: {e.stderr}")
+            return False
+        except FileNotFoundError:
+            print("FFmpeg не найден. Убедитесь что FFmpeg установлен и доступен в PATH")
             return False
 
-    def create_4k_hdr(self,
-                      output_path: str = "4k_hdr.mp4",
-                      hdr: bool = True) -> bool:
-        config = VideoConfig(
-            output_path=output_path,
-            resolution=(3840, 2160),
-            fps=60,
-            video_codec="libx265",
-            audio_codec="aac"
-        )
-        quality_params = [
-            '-c:v', 'libx265',
-            '-crf', '20',
-            '-preset', 'slow',
-            '-profile:v', 'main10',
-            '-pix_fmt', 'yuv420p10le',
-            '-tag:v', 'hvc1',
-        ]
-        if hdr:
-            quality_params.extend([
-                '-colorspace', 'bt2020nc',
-                '-color_primaries', 'bt2020',
-                '-color_trc', 'smpte2084',
-                '-color_range', 'tv',
-            ])
-
-        old_method = self._get_max_quality_params
-        self._get_max_quality_params = lambda cfg: quality_params + [
-            '-c:a', 'aac',
-            '-b:a', '320k',
-            '-ar', '48000',
-            '-s', f"{cfg.resolution[0]}x{cfg.resolution[1]}",
-            '-r', str(cfg.fps),
-        ]
-
-        try:
-            result = self.create_video(config)
-            return result
-        finally:
-            self._get_max_quality_params = old_method
 
     def _get_audio_duration(self, audio_path: str) -> str:
         cmd = [
