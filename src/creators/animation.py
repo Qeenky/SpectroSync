@@ -219,9 +219,13 @@ class WaveVisualizer:
 
         return x, waves_data, powers
 
-    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4'):
+    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4', dpi = 150):
         """Создаёт анимацию с тремя независимыми волнами"""
-        fig, ax = plt.subplots(figsize=(14, 7), facecolor='black')
+        # Size
+        figsize_width = 1920 / dpi
+        figsize_height = 270 / dpi
+
+        fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='black', dpi=dpi)
         ax.set_facecolor('black')
 
         # Создаем три линии
@@ -294,7 +298,7 @@ class WaveVisualizer:
                                       interval=1000 / fps)
 
         writer = FFMpegWriter(fps=fps, metadata=dict(artist='SpectroSync'))
-        ani.save(output_file, writer=writer, dpi=150)
+        ani.save(output_file, writer=writer, dpi=dpi)
         plt.close()
 
         return ani
