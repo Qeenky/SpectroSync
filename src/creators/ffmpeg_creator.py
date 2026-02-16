@@ -111,10 +111,15 @@ class FFmpegVideoCreator(IVideoCreator):
             '-i', main_video,
             '-i', overlay_video,
             '-filter_complex',
-            f'[0:v]scale=1920:1080[main]; [1:v]scale=1920:270[over]; [main][over]overlay=0:{y_position}[out]',
+            f'[1:v]format=rgba,scale=1920:270[over]; [0:v]scale=1920:1080[main]; [main][over]overlay=0:{y_position}:format=auto,format=yuv420p[out]',
             '-map', '[out]',
             '-map', '0:a?',
-            '-c:a', 'copy',
+            '-c:v', 'libx264',
+            '-crf', '18',
+            '-preset', 'slow',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-movflags', '+faststart',
             '-y',
             output_video
         ]
