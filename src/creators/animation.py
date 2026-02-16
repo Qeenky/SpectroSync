@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 import numpy as np
 import subprocess, os
-import matplotlib.colors as mcolors
+
 
 
 class WaveVisualizer:
@@ -217,34 +217,16 @@ class WaveVisualizer:
         return x, waves_data, powers
 
     def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4', dpi=150):
-        """Создаёт анимацию с тремя независимыми волнами и градиентным фоном"""
+        """Создаёт анимацию с тремя независимыми волнами на прозрачном фоне"""
         figsize_width = 1920 / dpi
         figsize_height = 270 / dpi
 
-        fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='black', dpi=dpi)
+        # Важно: facecolor='none' для прозрачного фона фигуры
+        fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='none', dpi=dpi)
+        ax.set_facecolor('none')  # Прозрачный фон для осей
 
+        # Убираем все отступы
         plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
-
-        # Создаем градиент с альфа-каналом
-        y = np.linspace(-8, 8, 256)
-        x = np.linspace(0, 4 * np.pi, 256)
-        X, Y = np.meshgrid(x, y)
-
-        # Нормализуем Y для альфа-канала (от 0 сверху до 1 снизу)
-        alpha = (Y + 8) / 16  # -8 -> 0, 8 -> 1
-        alpha = np.clip(alpha, 0, 1)
-
-        # Создаем RGBA изображение
-        gradient = np.zeros((*Y.shape, 4))
-        gradient[:, :, 0] = 0  # R
-        gradient[:, :, 1] = 0  # G
-        gradient[:, :, 2] = 0  # B
-        gradient[:, :, 3] = alpha  # A
-
-        ax.imshow(gradient, extent=[0, 4 * np.pi, -8, 8], aspect='auto',
-                  zorder=0, origin='lower', interpolation='bilinear')
-
-        ax.set_facecolor('black')
 
         bass_line, = ax.plot([], [], linewidth=4.0)
         melody_line, = ax.plot([], [], linewidth=2.5)
@@ -285,7 +267,13 @@ class WaveVisualizer:
                                       init_func=init, blit=False,
                                       interval=1000 / fps)
 
-        writer = FFMpegWriter(fps=fps, metadata=dict(artist='SpectroSync'))
+        # Используем кодек, поддерживающий альфа-канал
+        writer = FFMpegWriter(fps=fps,
+                              metadata=dict(artist='SpectroSync'),
+                              codec='libx264rgb',  # или 'libx264' с соответствующими настройками
+                              extra_args=['-pix_fmt', 'rgba'])  # Важно! Используем RGBA
+
+        # Сохраняем с прозрачностью
         ani.save(output_file, writer=writer, dpi=dpi, savefig_kwargs={'transparent': True})
         plt.close()
 
