@@ -17,23 +17,35 @@ def main():
     )
 
 
-    FFmpegVideoCreator.create_video(creator, config)
+    # FFmpegVideoCreator.create_video(creator, config)
+    #
+    #
+    # FFmpegVideoCreator.overlay_videos(
+    #     self=creator,
+    #     main_video="output_data\\ser2.mp4",
+    #     overlay_video="src\\creators\\tp1.mov",
+    #     output_video="output_data\\my_video_overlay4.mp4"
+    # )
 
+    audio_duration = float(FFmpegVideoCreator._get_audio_duration(creator, repo.get_audio().path))
+    create_thumbnail_bar_video(
+        "input_data\\thumbnail.png",
+        "output_data\\thumb_video.mov",
+        audio_duration=audio_duration,
+        fps=30,
+        dpi=150
+    )
 
     FFmpegVideoCreator.overlay_videos(
         self=creator,
-        main_video="output_data\\ser2.mp4",
-        overlay_video="src\\creators\\tp1.mov",
-        output_video="output_data\\my_video_overlay4.mp4"
+        main_video="output_data\\my_video_overlay4.mp4",
+        overlay_video="output_data\\thumb_video.mov",
+        output_video="output_data\\final_video.mp4",
+        custom_x=150,
+        custom_y=250,
+        overlay_width=400,
+        overlay_height=410
     )
-
-    create_thumbnail_bar_video(
-        "output_data\\my_video_overlay4.mp4",
-        "input_data\\thumbnail.png",
-        "output_data\\my_video_overlay5.mp4",
-        audio_duration=float(FFmpegVideoCreator._get_audio_duration(creator, repo.get_audio().path))
-    )
-
 
 
 

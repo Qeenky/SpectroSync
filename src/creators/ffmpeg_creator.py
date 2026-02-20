@@ -89,28 +89,33 @@ class FFmpegVideoCreator(IVideoCreator):
             '-movflags', '+faststart'
         ]
 
-    def overlay_videos(self, main_video, overlay_video, output_video, overlay_position='bottom'):
+    def overlay_videos(self, main_video, overlay_video, output_video, custom_x=0, custom_y=810,
+                       overlay_width=1920, overlay_height=270):
         """
-        Наложение видео с волнами на основное видео
+        Наложение видео с прозрачностью на основное видео
 
         Args:
-            main_video: путь к основному видео (1920x1080)
-            overlay_video: путь к видео с волнами (1920x270)
+            main_video: путь к основному видео
+            overlay_video: путь к видео для наложения
             output_video: путь для сохранения результата
-            overlay_position: 'top' (сверху) или 'bottom' (снизу)
+            custom_x: кастомная позиция X (если overlay_position='custom')
+            custom_y: кастомная позиция Y (если overlay_position='custom')
+            overlay_width: ширина накладываемого видео (если нужно изменить размер)
+            overlay_height: высота накладываемого видео (если нужно изменить размер)
         """
 
-        if overlay_position == 'bottom':
-            y_position = '810'
-        else:
-            y_position = '0'
+        scale_filter = ''
+        if overlay_width and overlay_height:
+            scale_filter = f'scale={overlay_width}:{overlay_height},'
 
         ffmpeg_cmd = [
             'ffmpeg',
             '-i', main_video,
             '-i', overlay_video,
             '-filter_complex',
-            f'[1:v]format=rgba,scale=1920:270[over]; [0:v]scale=1920:1080,format=yuva420p[main]; [main][over]overlay=0:{y_position}:format=auto,format=yuva420p[out]',
+            f'[1:v]format=rgba,{scale_filter}setdar=1[over]; '
+            f'[0:v]scale=1920:1080,format=yuva420p[main]; '
+            f'[main][over]overlay={custom_x}:{custom_y}:format=auto,format=yuva420p[out]',
             '-map', '[out]',
             '-map', '0:a?',
             '-c:v', 'libx264',
@@ -126,6 +131,9 @@ class FFmpegVideoCreator(IVideoCreator):
 
         try:
             print(f"🎬 Наложение видео с прозрачностью...")
+            if overlay_width and overlay_height:
+                print(f"📐 Размер: {overlay_width}x{overlay_height}")
+
             result = subprocess.run(
                 ffmpeg_cmd,
                 check=True,
