@@ -15,10 +15,10 @@ def main():
         video_codec="libx264",
         audio_codec="aac"
     )
-    FFmpegVideoCreator.create_video(creator, config)
+    #FFmpegVideoCreator.create_video(creator, config)
     FFmpegVideoCreator.overlay_videos(self=creator,
                                       main_video="output_data\\ser2.mp4",
-                                      overlay_video="src\\creators\\ser1.mp4",
+                                      overlay_video="src\\creators\\ser1.mov",
                                       output_video="output_data\\my_video_overlay3.mp4")
 if __name__ == "__main__":
     main()

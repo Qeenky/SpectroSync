@@ -27,3 +27,6 @@ logs/
 
 # Docker
 data/
+
+input_data
+output_data

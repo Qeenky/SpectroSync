@@ -1,3 +1,5 @@
+import shutil
+
 from src.creators.analizator import Analizator
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -23,12 +25,12 @@ class WaveVisualizer:
 
         # Параметры автономной динамической волны
         self.base_phase = 0.0
-        self.base_phase_speed = 7.0
+        self.base_phase_speed = 3.0
         self.time = 0.0
 
         # Автономные осцилляторы
         self.autonomous_amplitude = 0.0
-        self.autonomous_frequency = 0.7 * 10
+        self.autonomous_frequency = 0.7
         self.autonomous_phase_mod = 1.0
 
         # Для плавного изменения частоты
@@ -216,16 +218,14 @@ class WaveVisualizer:
 
         return x, waves_data, powers
 
-    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mp4', dpi=150):
+    def create_wave_animation(self, duration_sec=10, fps=30, output_file='waves.mov', dpi=150):
         """Создаёт анимацию с тремя независимыми волнами на прозрачном фоне"""
         figsize_width = 1920 / dpi
         figsize_height = 270 / dpi
 
-        # Важно: facecolor='none' для прозрачного фона фигуры
         fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='none', dpi=dpi)
-        ax.set_facecolor('none')  # Прозрачный фон для осей
+        ax.set_facecolor('none')
 
-        # Убираем все отступы
         plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
         bass_line, = ax.plot([], [], linewidth=4.0)
@@ -234,12 +234,10 @@ class WaveVisualizer:
 
         waves = [bass_line, melody_line, vocal_line]
 
-        # Устанавливаем границы точно по краям
         ax.set_xlim(0, 4 * np.pi)
         ax.set_ylim(-8, 8)
         ax.axis('off')
 
-        # Убираем тики и всё остальное
         ax.set_xticks([])
         ax.set_yticks([])
         ax.margins(0)
@@ -267,13 +265,17 @@ class WaveVisualizer:
                                       init_func=init, blit=False,
                                       interval=1000 / fps)
 
-        # Используем кодек, поддерживающий альфа-канал
-        writer = FFMpegWriter(fps=fps,
-                              metadata=dict(artist='SpectroSync'),
-                              codec='libx264rgb',  # или 'libx264' с соответствующими настройками
-                              extra_args=['-pix_fmt', 'rgba'])  # Важно! Используем RGBA
+        writer = FFMpegWriter(
+            fps=fps,
+            metadata=dict(artist='SpectroSync'),
+            codec='png',
+            extra_args=[
+                '-pix_fmt', 'rgba',
+                '-vcodec', 'png',
+                '-compression_level', '1'
+            ]
+        )
 
-        # Сохраняем с прозрачностью
         ani.save(output_file, writer=writer, dpi=dpi, savefig_kwargs={'transparent': True})
         plt.close()
 
@@ -325,6 +327,6 @@ a._precompute_all_powers()
 viz = WaveVisualizer(a)
 visual = viz.create_wave_animation(
     duration_sec=int(a._get_audio_duration()),
-    output_file='ser1.mp4',
+    output_file='ser1.mov',
     fps=60
 )

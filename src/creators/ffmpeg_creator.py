@@ -89,7 +89,6 @@ class FFmpegVideoCreator(IVideoCreator):
             '-movflags', '+faststart'
         ]
 
-
     def overlay_videos(self, main_video, overlay_video, output_video, overlay_position='bottom'):
         """
         Наложение видео с волнами на основное видео
@@ -111,12 +110,13 @@ class FFmpegVideoCreator(IVideoCreator):
             '-i', main_video,
             '-i', overlay_video,
             '-filter_complex',
-            f'[1:v]format=rgba,scale=1920:270[over]; [0:v]scale=1920:1080[main]; [main][over]overlay=0:{y_position}:format=auto,format=yuv420p[out]',
+            f'[1:v]format=rgba,scale=1920:270[over]; [0:v]scale=1920:1080,format=yuva420p[main]; [main][over]overlay=0:{y_position}:format=auto,format=yuva420p[out]',
             '-map', '[out]',
             '-map', '0:a?',
             '-c:v', 'libx264',
             '-crf', '18',
             '-preset', 'slow',
+            '-pix_fmt', 'yuva420p',
             '-c:a', 'aac',
             '-b:a', '192k',
             '-movflags', '+faststart',
@@ -125,21 +125,22 @@ class FFmpegVideoCreator(IVideoCreator):
         ]
 
         try:
-            subprocess.run(
+            print(f"🎬 Наложение видео с прозрачностью...")
+            result = subprocess.run(
                 ffmpeg_cmd,
                 check=True,
                 capture_output=True,
                 text=True
             )
-            print(f"Видео успешно создано: {output_video}")
+            print(f"✅ Видео успешно создано: {output_video}")
             return True
 
         except subprocess.CalledProcessError as e:
-            print(f"Ошибка при выполнении FFmpeg:")
+            print(f"❌ Ошибка при выполнении FFmpeg:")
             print(f"STDERR: {e.stderr}")
             return False
         except FileNotFoundError:
-            print("FFmpeg не найден. Убедитесь что FFmpeg установлен и доступен в PATH")
+            print("❌ FFmpeg не найден. Убедитесь что FFmpeg установлен и доступен в PATH")
             return False
 
 
