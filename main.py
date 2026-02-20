@@ -1,5 +1,5 @@
 from src import SimpleMediaRepository, FFmpegVideoCreator, VideoConfig
-
+from src.creators.thumbnail_creator import create_thumbnail_bar_video
 
 
 def main():
@@ -15,10 +15,27 @@ def main():
         video_codec="libx264",
         audio_codec="aac"
     )
-    #FFmpegVideoCreator.create_video(creator, config)
-    FFmpegVideoCreator.overlay_videos(self=creator,
-                                      main_video="output_data\\ser2.mp4",
-                                      overlay_video="src\\creators\\tp1.mov",
-                                      output_video="output_data\\my_video_overlay4.mp4")
+
+
+    FFmpegVideoCreator.create_video(creator, config)
+
+
+    FFmpegVideoCreator.overlay_videos(
+        self=creator,
+        main_video="output_data\\ser2.mp4",
+        overlay_video="src\\creators\\tp1.mov",
+        output_video="output_data\\my_video_overlay4.mp4"
+    )
+
+    create_thumbnail_bar_video(
+        "output_data\\my_video_overlay4.mp4",
+        "input_data\\thumbnail.png",
+        "output_data\\my_video_overlay5.mp4",
+        audio_duration=float(FFmpegVideoCreator._get_audio_duration(creator, repo.get_audio().path))
+    )
+
+
+
+
 if __name__ == "__main__":
     main()
