@@ -1,5 +1,3 @@
-import shutil
-
 from src.creators.analizator import Analizator
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -321,12 +319,12 @@ class WaveVisualizer:
 
 # Использование
 a = Analizator()
-a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\Ser1.mp3")
+a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\tp.mp3")
 a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
 visual = viz.create_wave_animation(
     duration_sec=int(a._get_audio_duration()),
-    output_file='ser1.mov',
+    output_file='tp1.mov',
     fps=60
 )

@@ -4,8 +4,8 @@ from src import SimpleMediaRepository, FFmpegVideoCreator, VideoConfig
 
 def main():
     repo = SimpleMediaRepository()
-    repo.set_image("input_data\\background.jpg")
-    repo.set_audio("input_data\\Ser1.mp3")
+    repo.set_image("src\\creators\\1.jpg")
+    repo.set_audio("input_data\\tp.mp3")
 
     creator = FFmpegVideoCreator(repo)
     config = VideoConfig(
@@ -18,7 +18,7 @@ def main():
     #FFmpegVideoCreator.create_video(creator, config)
     FFmpegVideoCreator.overlay_videos(self=creator,
                                       main_video="output_data\\ser2.mp4",
-                                      overlay_video="src\\creators\\ser1.mov",
-                                      output_video="output_data\\my_video_overlay3.mp4")
+                                      overlay_video="src\\creators\\tp1.mov",
+                                      output_video="output_data\\my_video_overlay4.mp4")
 if __name__ == "__main__":
     main()

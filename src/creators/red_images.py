@@ -1,5 +1,32 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
+
+def blur_background_advanced(image_path, output_path, blur_type='gaussian', blur_radius=5):
+    """
+    Размытие фонового изображения
+
+    blur_type: 'gaussian', 'box', 'min', 'max'
+    """
+    print(f"Замыливание фонового изображения (тип: {blur_type}, радиус: {blur_radius})...")
+
+    img = Image.open(image_path).convert('RGBA')
+    img = img.resize((1920, 1080))
+
+    if blur_type == 'gaussian':
+        blurred = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    elif blur_type == 'box':
+        blurred = img.filter(ImageFilter.BoxBlur(radius=blur_radius))
+    elif blur_type == 'min':
+        blurred = img.filter(ImageFilter.MinFilter(size=blur_radius))
+    elif blur_type == 'max':
+        blurred = img.filter(ImageFilter.MaxFilter(size=blur_radius))
+    else:
+        blurred = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    blurred.convert('RGB').save(output_path, quality=95)
+
+    print(f"Готово: {output_path}")
+    return True
 
 def add_gradient_fullscreen(image_path, output_path):
     print("Создание полноэкранного градиента...")
@@ -28,4 +55,3 @@ def add_gradient_fullscreen(image_path, output_path):
 
     print(f"Готово: {output_path}")
     return True
-
