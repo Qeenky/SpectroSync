@@ -13,6 +13,10 @@ class IMediaRepository(ABC):
     def get_audio(self) -> Optional[MediaAsset]:
         pass
 
+    @abstractmethod
+    def get_video_input(self) -> Optional[MediaAsset]:  # Новый метод
+        pass
+
 
 class IVideoCreator(ABC):
     @abstractmethod

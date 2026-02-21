@@ -319,7 +319,7 @@ class WaveVisualizer:
 
 # Использование
 a = Analizator()
-a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\tp.mp3")
+a._set_audio_path("C:\\Users\\Qeenky\\Desktop\\SpectroSync\\input_data\\Нервы - Муза.mp3")
 a._precompute_all_powers()
 
 viz = WaveVisualizer(a)
