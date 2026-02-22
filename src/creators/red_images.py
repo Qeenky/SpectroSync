@@ -164,14 +164,15 @@ def blur_video_background(video_path, output_path, blur_strength=5):
         return False
 
 
-def add_gradient_to_video(duration, output_mov_path):
+def add_gradient_to_video(duration, output_mov_path, direction="bottom"):
     """
-    Создает MOV видео с градиентом на прозрачном фоне (затемнение снизу вверх)
+    Создает MOV видео с градиентом на прозрачном фоне (затемнение снизу вверх или сверху вниз)
     Градиент создается так же, как в add_gradient_fullscreen_image
 
     Args:
         duration: длительность видео в секундах
         output_mov_path: путь для сохранения MOV файла
+        direction: направление градиента ("bottom" - снизу вверх, "top" - сверху вниз)
 
     Returns:
         bool: True если успешно, False если ошибка
@@ -179,6 +180,7 @@ def add_gradient_to_video(duration, output_mov_path):
 
     print("🎬 Создание видео с градиентом на прозрачном фоне...")
     print(f"   Длительность: {duration} сек")
+    print(f"   Направление: {direction}")
 
     temp_dir = tempfile.mkdtemp()
     frame_path = os.path.join(temp_dir, "gradient_frame.png")
@@ -190,17 +192,39 @@ def add_gradient_to_video(duration, output_mov_path):
 
     black_zone_start = 900
 
-    print(f"   Параметры градиента (как в add_gradient_fullscreen_image):")
-    print(f"     - Градиент: Y=0-{black_zone_start}")
-    print(f"     - Черная зона: Y={black_zone_start}-1080")
+    if direction == "bottom":
+        print(f"   Параметры градиента (снизу вверх):")
+        print(f"     - Градиент: Y=0-{black_zone_start}")
+        print(f"     - Черная зона: Y={black_zone_start}-1080")
 
-    for y in range(0, black_zone_start):
-        progress = y / black_zone_start
-        alpha = int(255 * progress)
-        draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, alpha))
+        for y in range(0, black_zone_start):
+            progress = y / black_zone_start
+            alpha = int(255 * progress)
+            draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, alpha))
 
-    for y in range(black_zone_start, 1080):
-        draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, 255))
+        for y in range(black_zone_start, 1080):
+            draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, 255))
+
+    elif direction == "top":
+        # Градиент сверху вниз
+        print(f"   Параметры градиента (сверху вниз):")
+        print(f"     - Черная зона: Y=0-180")
+        print(f"     - Градиент: Y=180-1080")
+
+        black_zone_end = 180
+
+        for y in range(0, black_zone_end):
+            draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, 255))
+
+        for y in range(black_zone_end, 1080):
+            progress = (y - black_zone_end) / (1080 - black_zone_end)
+            alpha = int(255 * (1 - progress))
+            draw.rectangle([(0, y), (1920, y)], fill=(0, 0, 0, alpha))
+
+    else:
+        print(f"❌ Неизвестное направление: {direction}. Используйте 'bottom' или 'top'")
+        shutil.rmtree(temp_dir)
+        return False
 
     gradient.save(frame_path, 'PNG')
     print(f"   Кадр с градиентом сохранен")
@@ -229,7 +253,8 @@ def add_gradient_to_video(duration, output_mov_path):
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Ошибка при создании видео: {e.stderr}")
-
+        shutil.rmtree(temp_dir)
+        return False
 
 def create_text_video(audio_path, output_mov_path,
                       title_font_size=70, artist_font_size=60,

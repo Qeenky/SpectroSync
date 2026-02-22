@@ -7,7 +7,7 @@ class FFmpegVideoCreator(IVideoCreator):
     def __init__(self, repository: IMediaRepository):
         self._repo = repository
 
-    def create_video(self, config: VideoConfig, scale_mode='pad') -> bool:
+    def create_video(self, config: VideoConfig, scale_mode='crop') -> bool:
         """
         Создает видео из изображения или зацикленного видео с аудиодорожкой
 
