@@ -6,7 +6,7 @@ from src.creators.animation import WaveVisualizer
 
 def main():
     # Data_input
-    audio_name = "Flane Runner - BAILANDO"
+    audio_name = "Pepel Nahudi - шрамы"
     audio_path = f"input_data\\{audio_name}.mp3"
 
 
