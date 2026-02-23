@@ -221,9 +221,10 @@ def trim_video_reencode(input_video, output_video, start_time=0, end_time=None, 
         return False
 
 if __name__ == "__main__":
-    trim_video_reencode("input_data/temp.mp4", "input_data/temp1.mp4", end_time=3)
+    #trim_video_reencode("input_data/temp.mp4", "input_data/temp1.mp4", start_time=48, end_time=62)
     create_reverse_video(
-        input_video="input_data/temp1.mp4",
-        output_video="input_data/backv1.mp4"
+        input_video="input_data/2/background.mp4",
+        output_video="temp_files/temp1.mp4"
     )
-    slow_down_video_simple("input_data/backv1.mp4", "input_data/backv.mp4", speed_factor=1.4)
+    slow_down_video_simple("temp_files/temp1.mp4", "input_data/2/background.mp4", speed_factor=2)
+    pass

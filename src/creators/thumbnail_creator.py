@@ -44,12 +44,12 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
         audio_duration = 180
 
     width_px = 1000
-    height_px = 400
+    height_px = 600
 
     # Позиции элементов
     thumb_x = 0
     thumb_width = 400
-    thumb_height = 400
+    thumb_height = 600
 
     bar_area_x = 400
     bar_area_width = 600
@@ -59,7 +59,7 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
     bar_width = 560
     bar_height = 8
     bar_x = bar_area_x + (bar_area_width - bar_width) // 2
-    bar_y = 200
+    bar_y = height_px//2
 
     figsize_width = width_px / dpi
     figsize_height = height_px / dpi
@@ -90,7 +90,7 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
     # TODO: сделать зависимым от фона
     orange_bar = plt.Rectangle(
         (bar_x, bar_y), 0, bar_height,
-        facecolor='orange', alpha=0.8, linewidth=0, zorder=3
+        facecolor='green', alpha=0.8, linewidth=0, zorder=3
     )
     ax.add_patch(orange_bar)
 
