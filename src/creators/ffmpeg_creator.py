@@ -238,6 +238,6 @@ class FFmpegVideoCreator(IVideoCreator):
         try:
             result = subprocess.run(cmd, capture_output=True, text=True)
             duration = float(result.stdout.strip())
-            return str(int(duration))
+            return str(int(duration)+1) # +1 edit
         except:
             return "10"

@@ -7,15 +7,83 @@ from matplotlib.animation import FFMpegWriter
 from PIL import Image
 
 
-def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30, dpi=150):
+def create_thumbnail_video(thumbnail_path, output_video, audio_duration, fps=30, dpi=150):
     """
-    Создаёт видео с тумбой слева и горизонтальным прогресс-баром справа
+    Создаёт видео только с тумбой слева (без бара)
 
-    Размер видео: 1000x400 пикселей
-    - Слева: тумба 400x400
-    - Справа: область 600x400 с горизонтальным баром и временем
-    - Бар: 560x8 (с отступами для текста времени)
-    - Под баром: прошедшее время (слева) и оставшееся время (справа)
+    Args:
+        thumbnail_path: путь к изображению тумбы
+        output_video: путь для сохранения видео
+        audio_duration: длительность видео в секундах
+        fps: кадров в секунду
+        dpi: разрешение
+    """
+    width_px = 400
+    height_px = 600
+
+    figsize_width = width_px / dpi
+    figsize_height = height_px / dpi
+
+    fig, ax = plt.subplots(figsize=(figsize_width, figsize_height), facecolor='none', dpi=dpi)
+    ax.set_facecolor('none')
+
+    plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+    ax.set_xlim(0, width_px)
+    ax.set_ylim(height_px, 0)
+
+    # Загружаем и отображаем тумбу
+    thumb_img = Image.open(thumbnail_path)
+    thumb_img = thumb_img.resize((width_px, height_px), Image.Resampling.LANCZOS)
+
+    ax.imshow(thumb_img, extent=[0, width_px, height_px, 0],
+              aspect='auto', zorder=1)
+
+    ax.axis('off')
+    ax.set_aspect('equal')
+
+    def update(frame):
+        return []
+
+    total_frames = int(audio_duration * fps)
+    ani = animation.FuncAnimation(
+        fig, update, frames=total_frames,
+        interval=1000 / fps, blit=True
+    )
+
+    writer = FFMpegWriter(
+        fps=fps,
+        metadata=dict(artist='SpectroSync'),
+        codec='png',
+        extra_args=[
+            '-pix_fmt', 'rgba',
+            '-vcodec', 'png',
+            '-compression_level', '1'
+        ]
+    )
+
+    print(f"🎬 Создание видео с тумбой...")
+    print(f"📐 Размер: {width_px}x{height_px}")
+    print(f"⏱️ Длительность: {audio_duration:.0f} сек")
+
+    ani.save(output_video, writer=writer, dpi=dpi,
+             savefig_kwargs={'transparent': True, 'bbox_inches': 'tight', 'pad_inches': 0})
+    plt.close()
+
+    print(f"✅ Готово: {output_video}")
+    return True
+
+
+def create_bar_video(audio_path, output_video, fps=30, dpi=150, bar_color='green'):
+    """
+    Создаёт видео только с прогресс-баром справа (без тумбы)
+
+    Args:
+        audio_path: путь к аудиофайлу (для получения длительности и названия)
+        output_video: путь для сохранения видео
+        fps: кадров в секунду
+        dpi: разрешение
+        bar_color: цвет прогресс-бара
     """
     filename = os.path.splitext(os.path.basename(audio_path))[0]
 
@@ -43,23 +111,14 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
         print(f"Ошибка получения длительности: {e}")
         audio_duration = 180
 
-    width_px = 1000
+    width_px = 600
     height_px = 600
-
-    # Позиции элементов
-    thumb_x = 0
-    thumb_width = 400
-    thumb_height = 600
-
-    bar_area_x = 400
-    bar_area_width = 600
-    bar_area_height = 400
 
     # Параметры бара
     bar_width = 560
     bar_height = 8
-    bar_x = bar_area_x + (bar_area_width - bar_width) // 2
-    bar_y = height_px//2
+    bar_x = (width_px - bar_width) // 2
+    bar_y = height_px // 2
 
     figsize_width = width_px / dpi
     figsize_height = height_px / dpi
@@ -72,13 +131,6 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
     ax.set_xlim(0, width_px)
     ax.set_ylim(height_px, 0)
 
-    # Загружаем и отображаем тумбу слева
-    thumb_img = Image.open(thumbnail_path)
-    thumb_img = thumb_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
-
-    ax.imshow(thumb_img, extent=[thumb_x, thumb_x + thumb_width, thumb_height, 0],
-              aspect='auto', zorder=1)
-
     # Серый фон для прогресс-бара
     gray_bar = plt.Rectangle(
         (bar_x, bar_y), bar_width, bar_height,
@@ -86,16 +138,13 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
     )
     ax.add_patch(gray_bar)
 
-    # Оранжевый прогресс-бар
-    # TODO: сделать зависимым от фона
-    orange_bar = plt.Rectangle(
+    progress_bar = plt.Rectangle(
         (bar_x, bar_y), 0, bar_height,
-        facecolor='green', alpha=0.8, linewidth=0, zorder=3
+        facecolor=bar_color, alpha=0.8, linewidth=0, zorder=3
     )
-    ax.add_patch(orange_bar)
+    ax.add_patch(progress_bar)
 
     def format_time(seconds):
-        """Форматирует время в MM:SS"""
         minutes = int(seconds // 60)
         secs = int(seconds % 60)
         return f"{minutes:02d}:{secs:02d}"
@@ -116,7 +165,7 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
 
     display_text = f'{artist} - {title}' if artist else title
     if len(display_text) > 60:
-        display_text = display_text[:37] + "..."
+        display_text = display_text[:57] + "..."
 
     title_text = ax.text(
         bar_x + bar_width / 2, bar_y - 15,
@@ -132,11 +181,11 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
         time_sec = frame / fps
         progress = min(time_sec / audio_duration, 1.0)
 
-        orange_bar.set_width(bar_width * progress)
+        progress_bar.set_width(bar_width * progress)
         time_elapsed_text.set_text(format_time(time_sec))
         time_remaining_text.set_text(format_time(max(0, audio_duration - time_sec)))
 
-        return [orange_bar, time_elapsed_text, time_remaining_text]
+        return [progress_bar, time_elapsed_text, time_remaining_text]
 
     total_frames = int(audio_duration * fps)
     ani = animation.FuncAnimation(
@@ -155,12 +204,12 @@ def create_thumbnail_bar_video(thumbnail_path, output_video, audio_path, fps=30,
         ]
     )
 
-    print(f"🎬 Создание видео с тумбой и горизонтальным баром справа...")
-    print(f"📐 Размер видео: {width_px}x{height_px}")
-    print(f"🖼️ Тумба: 400x400 (слева)")
-    print(f"📊 Бар: {bar_width}x{bar_height} (в правой части 600px)")
+    print(f"🎬 Создание видео с прогресс-баром...")
+    print(f"📐 Размер: {width_px}x{height_px}")
+    print(f"📊 Бар: {bar_width}x{bar_height}")
     print(f"⏱️ Длительность: {audio_duration:.0f} сек")
     print(f"📝 Текст: {display_text}")
+    print(f"🎨 Цвет бара: {bar_color}")
 
     ani.save(output_video, writer=writer, dpi=dpi,
              savefig_kwargs={'transparent': True, 'bbox_inches': 'tight', 'pad_inches': 0})
