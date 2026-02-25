@@ -18,7 +18,8 @@ def main():
             background_path = f"input_data\\{i}\\background.jpg"
         elif os.path.isfile(f"input_data\\{i}\\background.mp4"):
             background_path = f"input_data\\{i}\\background.mp4"
-
+        elif os.path.isfile(f"input_data\\{i}\\background.png"):
+            background_path = f"input_data\\{i}\\background.png"
         if os.path.isfile(f"input_data\\{i}\\thumbnail.jpg"):
             thumbnail_path = f"input_data\\{i}\\thumbnail.jpg"
         elif os.path.isfile(f"input_data\\{i}\\thumbnail.png"):
@@ -62,7 +63,7 @@ def main():
                     )
                     creator.create_video(config)
 
-                elif background_path[-4:] == ".jpg":
+                elif background_path[-4:] in (".jpg", ".png"):
                     blur_background_image(background_path, "temp_files\\background_blurred.jpg")
                     cmd = [
                         'ffmpeg',
@@ -118,17 +119,26 @@ def main():
                         custom_y=810,
                     )
 
-                    # TODO: переделать под разделенную логику с баром
-                    # # Наложение тумбы
-                    # creator.overlay_videos(
-                    #     main_video="temp_files\\temp_overlay.mp4",
-                    #     overlay_video="temp_files\\temp_thumb.mov",
-                    #     output_video=f"output_data\\{audio_name}.mp4",
-                    #     custom_x=150,
-                    #     custom_y=150,
-                    #     overlay_width=1000,
-                    #     overlay_height=600
-                    # )
+                    # Наложение тумбы
+                    creator.overlay_videos(
+                        main_video="temp_files\\temp_overlay.mp4",
+                        overlay_video="temp_files\\temp_thumb.mov",
+                        output_video=f"temp_files\\temp_thumb_back.mp4",
+                        custom_x=150,
+                        custom_y=300,
+                        overlay_width=400,
+                        overlay_height=400
+                    )
+
+                    creator.overlay_videos(
+                        main_video="temp_files\\temp_thumb_back.mp4",
+                        overlay_video="temp_files\\temp_bar_video.mov",
+                        output_video=f"output_data\\{audio_name}.mp4",
+                        custom_x=550,
+                        custom_y=200,
+                        overlay_width=600,
+                        overlay_height=600
+                    )
 
                     print(f"✅ Видео создано: output_data\\{audio_name}.mp4")
                 elif mode == 2:
