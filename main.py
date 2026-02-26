@@ -93,11 +93,11 @@ def main():
                     fps=60,
                     dpi=150
                 )
-                create_bar_video(audio_path, "temp_files\\temp_bar_video.mov", fps=60, bar_color="red")
+                create_bar_video(audio_path, "temp_files\\temp_bar_video.mov", fps=60, bar_color="yellow")
 
 
                 add_gradient_to_video(audio_duration, "temp_files\\temp_gradient.mov", direction="bottom")
-                mode = 2
+                mode = 1
                 if mode == 1:
                     # Наложение градиента на фон
                     creator.overlay_videos(
