@@ -194,9 +194,6 @@ def main():
                         custom_y=470,
                     )
 
-
-
-
             except Exception as e:
                 print(f"❌ Ошибка при обработке {i}: {e}")
                 import traceback

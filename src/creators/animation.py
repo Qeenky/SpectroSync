@@ -74,10 +74,18 @@ class WaveVisualizer:
         self.autonomous_amplitude = 1.0 + 0.3 * np.sin(self.time * 0.3)
         self.autonomous_phase_mod = 15 * (np.sin(self.time * 0.08)) ** 2
 
-        # Каждая волна теперь имеет свою целевую частоту!
-        self.target_bass_freq = 0.1 + powers['lows'] * 8.0
-        self.target_melody_freq = 0.2 + powers['mids'] * 6.0
-        self.target_vocal_freq = 0.4 + powers['highs'] * 10.0
+        # Логарифмическое масштабирование (более плавное нарастание)
+        # Добавляем небольшое смещение чтобы избежать log(0)
+        bass_power = np.log1p(powers['lows'] * 5) / np.log1p(5)
+        mids_power = np.log1p(powers['mids'] * 5) / np.log1p(5)
+        highs_power = np.log1p(powers['highs'] * 5) / np.log1p(5)
+
+        MIN_FREQ = 0.2
+        MAX_FREQ = 7.0
+
+        self.target_bass_freq = MIN_FREQ + bass_power * (MAX_FREQ - MIN_FREQ) * 0.4
+        self.target_melody_freq = MIN_FREQ + mids_power * (MAX_FREQ - MIN_FREQ) * 0.7
+        self.target_vocal_freq = MIN_FREQ + highs_power * (MAX_FREQ - MIN_FREQ)
 
         # Плавное обновление каждой частоты
         self.current_bass_freq += (self.target_bass_freq - self.current_bass_freq) * self.frequency_smoothness
