@@ -97,7 +97,7 @@ def main():
 
 
                 add_gradient_to_video(audio_duration, "temp_files\\temp_gradient.mov", direction="bottom")
-                mode = 1
+                mode = 2
                 if mode == 1:
                     # Наложение градиента на фон
                     creator.overlay_videos(

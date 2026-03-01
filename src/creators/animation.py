@@ -102,49 +102,46 @@ class WaveVisualizer:
         return max(0.0, min(1.0, float(value)))
 
     def get_gradient_color(self, power, wave_type, time_offset=0):
-        """Создает эффект градиента во времени"""
+        """Неоновая палитра для черного фона"""
         t = self.time + time_offset
 
         if wave_type == 'bass':
-            # Красный → Фиолетовый → Синий
-            r = 0.5 + 0.5 * np.sin(t * 0.3)
-            g = 0.2 + 0.3 * np.sin(t * 0.3 + 2.1)
-            b = 0.3 + 0.5 * np.sin(t * 0.3 + 4.2)
+            r = 1.0
+            g = 0.2 + 0.3 * np.sin(t * 0.8)
+            b = 0.6 + 0.4 * np.sin(t * 0.8)
         elif wave_type == 'melody':
-            # Зеленый → Желтый → Оранжевый
-            r = 0.3 + 0.6 * np.sin(t * 0.4)
-            g = 0.5 + 0.4 * np.sin(t * 0.4 + 1.5)
-            b = 0.1 + 0.2 * np.sin(t * 0.4 + 3.0)
+            r = 0.2 + 0.3 * np.sin(t * 0.8 + 1.0)
+            g = 1.0
+            b = 0.2 + 0.3 * np.sin(t * 0.8 + 1.0)
         else:
-            # Синий → Голубой → Бирюзовый
-            r = 0.1 + 0.3 * np.sin(t * 0.5)
-            g = 0.3 + 0.5 * np.sin(t * 0.5 + 1.8)
-            b = 0.6 + 0.3 * np.sin(t * 0.5 + 3.6)
+            r = 0.2 + 0.3 * np.sin(t * 0.8 + 2.0)
+            g = 0.6 + 0.4 * np.sin(t * 0.8 + 2.0)
+            b = 1.0
 
-        # Применяем мощность
-        r *= (0.7 + power * 0.5)
-        g *= (0.7 + power * 0.5)
-        b *= (0.7 + power * 0.5)
 
-        alpha = 0.7 + power * 0.3
+        r = self.clamp_color_value(r * (0.8 + power * 0.4))
+        g = self.clamp_color_value(g * (0.8 + power * 0.4))
+        b = self.clamp_color_value(b * (0.8 + power * 0.4))
 
-        return (self.clamp_color_value(r),
-                self.clamp_color_value(g),
-                self.clamp_color_value(b),
-                self.clamp_color_value(alpha))
+        alpha = 0.95
+
+        return (r, g, b, alpha)
 
     def get_accent_color(self, base_color, power):
-        """Добавляет случайные цветовые акценты на пиках"""
+        """Добавляет яркие акценты на пиках"""
         r, g, b, a = base_color
 
-        # На пиках добавляем случайный оттенок
         if power > 0.8:
-            accent = np.random.choice(['r', 'g', 'b'])
+            accent = np.random.choice(['r', 'g', 'b', 'white'])
             if accent == 'r':
-                r = min(1.0, r + 0.3)
+                r = min(1.0, r + 0.5)
             elif accent == 'g':
-                g = min(1.0, g + 0.3)
+                g = min(1.0, g + 0.5)
+            elif accent == 'b':
+                b = min(1.0, b + 0.5)
             else:
+                r = min(1.0, r + 0.3)
+                g = min(1.0, g + 0.3)
                 b = min(1.0, b + 0.3)
 
         return (r, g, b, a)
